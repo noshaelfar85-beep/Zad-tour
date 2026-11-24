@@ -847,6 +847,43 @@
       }).catch(() => {});
     }
 
+    // ===== Sound effects (generated in code, no files) =====
+    let audioCtx = null;
+    function getAudio() {
+      try {
+        if (!audioCtx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (!AC) return null;
+          audioCtx = new AC();
+        }
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        return audioCtx;
+      } catch (e) { return null; }
+    }
+    function tone(freq, start, dur, vol) {
+      const ctx = getAudio();
+      if (!ctx) return;
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      const t = ctx.currentTime + start;
+      o.type = "sine";
+      o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol || 0.18, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start(t);
+      o.stop(t + dur + 0.05);
+    }
+    function playSound(kind) {
+      try {
+        if (kind === "correct") { tone(659, 0, 0.18); tone(880, 0.12, 0.28); }
+        else if (kind === "wrong") { tone(300, 0, 0.18, 0.14); tone(220, 0.15, 0.3, 0.14); }
+        else if (kind === "finish") { tone(523, 0, 0.18); tone(659, 0.15, 0.18); tone(784, 0.3, 0.18); tone(1047, 0.45, 0.4); }
+      } catch (e) {}
+    }
+
     function selectMode(mode) {
       currentMode = mode;
       showToast(mode === "teams" ? "تم اختيار: تحدي الفريقين" : "تم اختيار: اللعب العائلي");
@@ -933,6 +970,9 @@
 
       if (selectedIdx === item.answer) {
         score++;
+        playSound("correct");
+      } else {
+        playSound("wrong");
       }
 
       const expBox = document.getElementById("explanationBox");
@@ -961,6 +1001,8 @@
       const badge = document.getElementById("recommendedTrack");
       const summary = document.getElementById("scoreSummary");
       const feedback = document.getElementById("feedbackMsg");
+
+      playSound("finish");
 
       summary.textContent = `إجاباتكم الموفقة: ${score} من ${QUESTIONS.length}`;
 
